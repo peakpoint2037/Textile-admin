@@ -1,0 +1,38 @@
+{
+  "name": "textile-commerce-admin",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "database"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/backend & npm run dev --workspace=apps/admin & wait",
+    "dev:backend": "npm run dev --workspace=apps/backend",
+    "dev:admin": "npm run dev --workspace=apps/admin",
+    "build": "npm run build --workspace=packages/shared && npm run build --workspace=apps/backend && npm run build --workspace=apps/admin",
+    "test": "npm run test --workspace=apps/backend && npm run test --workspace=apps/admin",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "db:up": "docker compose up -d postgres minio",
+    "db:down": "docker compose down",
+    "migrate": "npm run migrate --workspace=database",
+    "seed": "npm run seed --workspace=database",
+    "dev-token": "npm run dev-token --workspace=database"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "overrides": {
+    "@types/node": "^20.14.15"
+  }
+}

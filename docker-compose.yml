@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: textile-admin-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: textile
+      POSTGRES_PASSWORD: textile
+      POSTGRES_DB: textile_admin
+    ports:
+      - '55432:5432'
+    volumes:
+      - textile_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U textile -d textile_admin']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: textile-admin-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: textile-minio
+      MINIO_ROOT_PASSWORD: textile-minio-secret
+    ports:
+      - '59000:9000' # S3 API
+      - '59001:9001' # Web console
+    volumes:
+      - textile_minio_data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot job that creates + public-reads the product-images bucket on startup.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 textile-minio textile-minio-secret; do sleep 1; done;
+      mc mb --ignore-existing local/product-images;
+      mc anonymous set download local/product-images;
+      exit 0;
+      "
+
+volumes:
+  textile_postgres_data:
+  textile_minio_data:

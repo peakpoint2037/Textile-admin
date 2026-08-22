@@ -1,0 +1,22 @@
+{
+  "name": "@textile-admin/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate": "tsx migrate.ts",
+    "seed": "tsx seeds/seed.ts",
+    "dev-token": "tsx seeds/dev-token.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/pg": "^8.11.6",
+    "tsx": "^4.16.5",
+    "typescript": "^5.5.4"
+  }
+}
