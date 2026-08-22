@@ -1,11 +1,32 @@
 import type { MiddlewareHandler } from 'hono';
-import jwt from 'jsonwebtoken';
+import * as jose from 'jose';
 import type { UserRole } from '@textile-admin/shared';
 import { env } from '../config/env.js';
 import { pool } from '../config/db.js';
 import { userRepository } from '../repositories/userRepository.js';
 import { ApiError } from '../utils/apiError.js';
 import type { AppEnv } from '../types/hono.js';
+
+// Supabase Auth signs tokens with a per-project asymmetric key (ES256) and
+// publishes the public half at this JWKS endpoint — real Supabase projects
+// verify against it. Local dev has no Supabase project, so SUPABASE_URL is
+// blank and tokens (minted by `dev-token.ts`) are HS256-signed with a shared
+// secret instead; `jose.jwtVerify` handles both via the same call shape.
+const remoteJWKS = env.SUPABASE_URL
+  ? jose.createRemoteJWKSet(new URL(`${env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`))
+  : null;
+const devSecret = new TextEncoder().encode(env.SUPABASE_JWT_SECRET);
+
+async function verifyAccessToken(token: string): Promise<jose.JWTPayload> {
+  if (remoteJWKS) {
+    const { payload } = await jose.jwtVerify(token, remoteJWKS, {
+      issuer: `${env.SUPABASE_URL}/auth/v1`,
+    });
+    return payload;
+  }
+  const { payload } = await jose.jwtVerify(token, devSecret);
+  return payload;
+}
 
 export const authenticate: MiddlewareHandler<AppEnv> = async (c, next) => {
   const authHeader = c.req.header('Authorization');
@@ -14,11 +35,9 @@ export const authenticate: MiddlewareHandler<AppEnv> = async (c, next) => {
   }
   const token = authHeader.slice('Bearer '.length);
 
-  let payload: jwt.JwtPayload;
+  let payload: jose.JWTPayload;
   try {
-    const decoded = jwt.verify(token, env.SUPABASE_JWT_SECRET);
-    if (typeof decoded === 'string') throw new Error('unexpected token payload');
-    payload = decoded;
+    payload = await verifyAccessToken(token);
   } catch {
     throw ApiError.unauthorized('Invalid or expired token');
   }
