@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useCustomers } from '@/api/customers';
 import { useProducts } from '@/api/products';
 import { useCreateOrder } from '@/api/orders';
@@ -28,6 +29,7 @@ const NO_CUSTOMER = '__none__';
 
 export function CreateOrderDialog() {
   const [open, setOpen] = React.useState(false);
+  const [stitchingOnly, setStitchingOnly] = React.useState(false);
   const navigate = useNavigate();
   const { data: customers } = useCustomers({ limit: 100 });
   const { data: products } = useProducts({ limit: 100, status: 'ACTIVE' });
@@ -51,12 +53,15 @@ export function CreateOrderDialog() {
       paymentStatus: 'PENDING',
     },
   });
-  const { fields, append, remove } = useFieldArray({ control, name: 'items' });
+  const { fields, append, remove, replace } = useFieldArray({ control, name: 'items' });
   const watchedItems = watch('items');
-  const watchedDiscount = watch('discount') ?? 0;
-  const watchedShipping = watch('shippingFee') ?? 0;
-  const watchedTax = watch('tax') ?? 0;
-  const watchedStitchingCharge = watch('stitchingCharge') ?? 0;
+  // valueAsNumber turns a cleared input into NaN rather than undefined, so
+  // `?? 0` alone wouldn't catch it — Number.isFinite covers both cases.
+  const numberOrZero = (value: number | undefined) => (Number.isFinite(value) ? (value as number) : 0);
+  const watchedDiscount = numberOrZero(watch('discount'));
+  const watchedShipping = numberOrZero(watch('shippingFee'));
+  const watchedTax = numberOrZero(watch('tax'));
+  const watchedStitchingCharge = numberOrZero(watch('stitchingCharge'));
 
   const estimatedSubtotal = watchedItems.reduce((sum, item) => {
     const product = products?.items.find((p) => p.id === item.productId);
@@ -67,13 +72,32 @@ export function CreateOrderDialog() {
   const estimatedTotal =
     estimatedSubtotal - watchedDiscount + watchedShipping + watchedTax + watchedStitchingCharge;
 
+  function resetForm() {
+    reset();
+    setStitchingOnly(false);
+  }
+
+  function handleStitchingOnlyChange(checked: boolean) {
+    setStitchingOnly(checked);
+    if (checked) {
+      replace([]);
+    } else if (fields.length === 0) {
+      append({ productId: '', quantity: 1, discount: 0 });
+    }
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen);
+    if (!nextOpen) resetForm();
+  }
+
   async function onSubmit(values: CreateOrderInput) {
     try {
       const payload = { ...values, customerId: values.customerId === NO_CUSTOMER ? null : values.customerId };
       const order = await createOrder.mutateAsync(payload);
       toast.success(`Order ${order.orderNumber} created`);
       setOpen(false);
-      reset();
+      resetForm();
       navigate(`/orders/${order.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not create order');
@@ -81,7 +105,7 @@ export function CreateOrderDialog() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4" /> New Order
@@ -116,64 +140,95 @@ export function CreateOrderDialog() {
           </div>
 
           <div className="space-y-2">
-            <Label>Items</Label>
-            {fields.map((field, index) => (
-              <div key={field.id} className="flex items-start gap-2">
-                <Controller
-                  control={control}
-                  name={`items.${index}.productId`}
-                  render={({ field: productField }) => (
-                    <ProductCombobox
-                      products={products?.items ?? []}
-                      value={productField.value}
-                      onChange={productField.onChange}
-                    />
-                  )}
+            <div className="flex items-center justify-between">
+              <Label>Items</Label>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="stitchingOnly"
+                  checked={stitchingOnly}
+                  onCheckedChange={(checked) => handleStitchingOnlyChange(checked === true)}
                 />
-                <Input
-                  type="number"
-                  min={1}
-                  className="w-20"
-                  placeholder="Qty"
-                  {...register(`items.${index}.quantity`)}
-                />
-                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <Label htmlFor="stitchingOnly" className="font-normal text-muted-foreground">
+                  Stitching service only (no products)
+                </Label>
               </div>
-            ))}
-            {fields.length === 0 && (
+            </div>
+
+            {stitchingOnly ? (
               <p className="text-xs text-muted-foreground">
-                No products added — this will be a stitching-only order (customer supplies their own material).
-                Add a stitching charge below.
+                Customer supplies their own material — set a stitching charge below.
               </p>
+            ) : (
+              <>
+                {fields.map((field, index) => (
+                  <div key={field.id} className="flex items-start gap-2">
+                    <Controller
+                      control={control}
+                      name={`items.${index}.productId`}
+                      render={({ field: productField }) => (
+                        <ProductCombobox
+                          products={products?.items ?? []}
+                          value={productField.value}
+                          onChange={productField.onChange}
+                        />
+                      )}
+                    />
+                    <Input
+                      type="number"
+                      min={1}
+                      className="w-20"
+                      placeholder="Qty"
+                      {...register(`items.${index}.quantity`)}
+                    />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+                {fields.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    No items added. Check "Stitching service only" above, or add a product below.
+                  </p>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => append({ productId: '', quantity: 1, discount: 0 })}
+                >
+                  <Plus className="h-4 w-4" /> Add item
+                </Button>
+              </>
             )}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => append({ productId: '', quantity: 1, discount: 0 })}
-            >
-              <Plus className="h-4 w-4" /> Add item
-            </Button>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="space-y-1.5">
               <Label htmlFor="discount">Discount</Label>
-              <Input id="discount" type="number" step="0.01" {...register('discount')} />
+              <Input id="discount" type="number" step="0.01" {...register('discount', { valueAsNumber: true })} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="shippingFee">Shipping</Label>
-              <Input id="shippingFee" type="number" step="0.01" {...register('shippingFee')} />
+              <Input
+                id="shippingFee"
+                type="number"
+                step="0.01"
+                {...register('shippingFee', { valueAsNumber: true })}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="tax">Tax</Label>
-              <Input id="tax" type="number" step="0.01" {...register('tax')} />
+              <Input id="tax" type="number" step="0.01" {...register('tax', { valueAsNumber: true })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="stitchingCharge">Stitching charge</Label>
-              <Input id="stitchingCharge" type="number" step="0.01" {...register('stitchingCharge')} />
+              <Label htmlFor="stitchingCharge">Stitching charge{stitchingOnly && ' (required)'}</Label>
+              <Input
+                id="stitchingCharge"
+                type="number"
+                min={0}
+                step="0.01"
+                {...register('stitchingCharge', { valueAsNumber: true })}
+              />
               {errors.stitchingCharge && (
                 <p className="text-xs text-destructive">{errors.stitchingCharge.message}</p>
               )}
