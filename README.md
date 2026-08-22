@@ -125,27 +125,36 @@ verifies tokens it's handed.
 
 ## Public storefront API
 
-`GET /api/public/products` is the one deliberately unauthenticated route in
-the API — meant to be called directly from a separate customer-facing
-storefront (a different app/domain than the admin dashboard).
+`GET /api/public/products` and `GET /api/public/products/:id` are the two
+deliberately unauthenticated routes in the API — meant to be called directly
+from a separate customer-facing storefront (a different app/domain than the
+admin dashboard). Full docs: [`docs/api/public-products.md`](docs/api/public-products.md).
 
-- Filters: `category` (a category **slug**, not the internal UUID — e.g.
-  `?category=t-shirts`), `search`, `size`, `color`, plus the usual
-  `page`/`limit`/`sortBy`/`sortDir`.
-- Always scoped to `status = 'ACTIVE'` products only; there's no way to ask
-  it for draft/archived products.
-- The response shape (`PublicProductDto`) deliberately omits `purchasePrice`
-  (your cost/margin) and `lowStockLimit` (an internal operational
-  threshold) — fields the admin-facing `/api/products` endpoint returns but
-  a public storefront must never expose. If you add fields to this
-  endpoint later, keep that exclusion in mind.
-- CORS for this one path is controlled by `PUBLIC_STOREFRONT_URLS` (a
+- Filters on the list route: `category` (a category **slug**, not the
+  internal UUID — e.g. `?category=t-shirts`), `search`, `size`, `color`,
+  plus the usual `page`/`limit`/`sortBy`/`sortDir`.
+- The `:id` route returns the same fields as the list plus the full
+  `images` array (`PublicProductImageDto[]`) — use it for a product's
+  gallery/detail page. It 404s for an inactive/archived product's id, not
+  just a nonexistent one, so it never leaks a non-public product's
+  existence.
+- Both routes are always scoped to `status = 'ACTIVE'` products only;
+  there's no way to ask either for draft/archived products.
+- The response shapes (`PublicProductDto`, `PublicProductDetailDto`,
+  `PublicProductImageDto`) deliberately omit `purchasePrice` (your
+  cost/margin), `lowStockLimit` (an internal operational threshold), and
+  `storageKey` (the internal R2/S3 object key) — fields the admin-facing
+  `/api/products` endpoint returns but a public storefront must never
+  expose. If you add fields to either endpoint later, keep that exclusion
+  in mind.
+- CORS for `/api/public/*` is controlled by `PUBLIC_STOREFRONT_URLS` (a
   comma-separated allowlist) — left blank, any origin may call it; set once
   the storefront's real domain(s) are known to lock it down. Every other
   route stays locked to `FRONTEND_URL` regardless. See the `origin`
   function in `apps/backend/src/app.ts` if you need finer-grained rules.
-- An unknown category slug returns an empty page (`200`, zero items), not a
-  `404` — treated as a filter matching nothing, not a missing resource.
+- An unknown category slug on the list route returns an empty page (`200`,
+  zero items), not a `404` — treated as a filter matching nothing, not a
+  missing resource.
 
 ## Excel import/export formats
 

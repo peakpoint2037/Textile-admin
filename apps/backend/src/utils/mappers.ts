@@ -12,7 +12,9 @@ import type {
   ProductImageRow,
   ProductListItemDto,
   ProductRow,
+  PublicProductDetailDto,
   PublicProductDto,
+  PublicProductImageDto,
   StockStatus,
   UserDto,
   UserRow,
@@ -158,6 +160,26 @@ export function mapPublicProduct(row: ProductListRow): PublicProductDto {
     inStock: row.stock_quantity > 0,
     primaryImageUrl: row.primary_image_url,
     imageCount: row.image_count,
+  };
+}
+
+export function mapPublicProductImage(row: ProductImageRow): PublicProductImageDto {
+  return {
+    id: row.id,
+    imageUrl: row.image_url,
+    altText: row.alt_text,
+    sortOrder: row.sort_order,
+    isPrimary: row.is_primary,
+  };
+}
+
+export function mapPublicProductDetail(
+  row: ProductListRow,
+  images: ProductImageRow[],
+): PublicProductDetailDto {
+  return {
+    ...mapPublicProduct(row),
+    images: images.map(mapPublicProductImage),
   };
 }
 

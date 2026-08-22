@@ -7,3 +7,4 @@ import { publicProductController } from '../controllers/publicProductController.
 export const publicRoutes = new Hono();
 
 publicRoutes.get('/products', publicProductController.list);
+publicRoutes.get('/products/:id', publicProductController.getById);

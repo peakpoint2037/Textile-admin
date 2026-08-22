@@ -1,9 +1,16 @@
-import type { PaginatedResult, PublicProductDto, PublicProductQuery } from '@textile-admin/shared';
+import type {
+  PaginatedResult,
+  PublicProductDetailDto,
+  PublicProductDto,
+  PublicProductQuery,
+} from '@textile-admin/shared';
 import { paginatedResult } from './helpers/paginatedResult.js';
 import { pool } from '../config/db.js';
 import { categoryRepository } from '../repositories/categoryRepository.js';
+import { productImageRepository } from '../repositories/productImageRepository.js';
 import { productRepository } from '../repositories/productRepository.js';
-import { mapPublicProduct } from '../utils/mappers.js';
+import { ApiError } from '../utils/apiError.js';
+import { mapPublicProduct, mapPublicProductDetail } from '../utils/mappers.js';
 
 export const publicProductService = {
   async list(query: PublicProductQuery): Promise<PaginatedResult<PublicProductDto>> {
@@ -29,5 +36,16 @@ export const publicProductService = {
     });
 
     return paginatedResult(items.map(mapPublicProduct), query.page, query.limit, total);
+  },
+
+  async getById(id: string): Promise<PublicProductDetailDto> {
+    const row = await productRepository.findById(pool, id);
+    // Inactive/archived products 404 here too, same as the list endpoint's
+    // status filter — a product id must not leak existence/details for
+    // anything that isn't ACTIVE.
+    if (!row || row.status !== 'ACTIVE') throw ApiError.notFound('Product');
+
+    const images = await productImageRepository.listByProduct(pool, id);
+    return mapPublicProductDetail(row, images);
   },
 };

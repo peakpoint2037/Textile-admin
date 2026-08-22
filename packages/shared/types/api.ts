@@ -259,3 +259,17 @@ export interface PublicProductDto {
   primaryImageUrl: string | null;
   imageCount: number;
 }
+
+/** Storefront-safe image shape: no storageKey (an internal R2/S3 object
+ *  key), unlike ProductImageDto. */
+export interface PublicProductImageDto {
+  id: string;
+  imageUrl: string;
+  altText: string | null;
+  sortOrder: number;
+  isPrimary: boolean;
+}
+
+export interface PublicProductDetailDto extends PublicProductDto {
+  images: PublicProductImageDto[];
+}

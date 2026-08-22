@@ -4,13 +4,15 @@ import { createAuthenticatedUser } from './helpers/testAuth.js';
 
 let token: string;
 let tshirtsCategoryId: string;
+let activeProductId: string;
+let inactiveProductId: string;
 
 beforeEach(async () => {
   ({ token } = await createAuthenticatedUser('OWNER'));
   const category = await api.post('/api/categories', { token, body: { name: 'T-Shirts' } });
   tshirtsCategoryId = category.json.data.id;
 
-  await api.post('/api/products', {
+  const active = await api.post('/api/products', {
     token,
     body: {
       categoryId: tshirtsCategoryId,
@@ -22,7 +24,9 @@ beforeEach(async () => {
       status: 'ACTIVE',
     },
   });
-  await api.post('/api/products', {
+  activeProductId = active.json.data.id;
+
+  const inactive = await api.post('/api/products', {
     token,
     body: {
       sku: 'HD-GRY-L',
@@ -33,6 +37,7 @@ beforeEach(async () => {
       status: 'INACTIVE',
     },
   });
+  inactiveProductId = inactive.json.data.id;
 });
 
 describe('public products API', () => {
@@ -66,5 +71,34 @@ describe('public products API', () => {
     const { status, json } = await api.get('/api/public/products?category=does-not-exist');
     expect(status).toBe(200);
     expect(json.data.items).toHaveLength(0);
+  });
+});
+
+describe('public product detail API', () => {
+  it('requires no authentication and returns the images array', async () => {
+    const { status, json } = await api.get(`/api/public/products/${activeProductId}`);
+    expect(status).toBe(200);
+    expect(json.data.sku).toBe('TS-BLK-M');
+    expect(Array.isArray(json.data.images)).toBe(true);
+  });
+
+  it('never returns cost price, low-stock threshold, or internal image storage keys', async () => {
+    const { json } = await api.get(`/api/public/products/${activeProductId}`);
+    expect(json.data).not.toHaveProperty('purchasePrice');
+    expect(json.data).not.toHaveProperty('lowStockLimit');
+    for (const image of json.data.images) {
+      expect(image).not.toHaveProperty('storageKey');
+    }
+  });
+
+  it('404s for an INACTIVE product', async () => {
+    const { status, json } = await api.get(`/api/public/products/${inactiveProductId}`);
+    expect(status).toBe(404);
+    expect(json.success).toBe(false);
+  });
+
+  it('404s for a nonexistent product id', async () => {
+    const { status } = await api.get('/api/public/products/00000000-0000-0000-0000-000000000000');
+    expect(status).toBe(404);
   });
 });
