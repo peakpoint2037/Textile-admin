@@ -9,3 +9,5 @@ coverage/
 .turbo/
 *.tsbuildinfo
 apps/admin/.vite/
+.vercel
+.env*
