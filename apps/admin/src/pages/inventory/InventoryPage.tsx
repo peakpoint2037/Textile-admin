@@ -119,7 +119,7 @@ export function InventoryPage() {
                     {item.lowStockLimit}
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-col items-start gap-1">
+                    <div className="flex items-center gap-1.5 whitespace-nowrap">
                       <StockStatusBadge status={item.stockStatus} />
                       <ProductStatusBadge status={item.status} />
                     </div>

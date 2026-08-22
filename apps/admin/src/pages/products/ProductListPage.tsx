@@ -206,8 +206,8 @@ export function ProductListPage() {
                   <TableCell className="text-right tabular-nums">{formatCurrency(product.purchasePrice)}</TableCell>
                   <TableCell className="text-right tabular-nums">{formatCurrency(product.sellingPrice)}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="tabular-nums">{product.stockQuantity}</span>
+                    <div className="flex items-center justify-end gap-2">
+                      <span className="tabular-nums text-muted-foreground">{product.stockQuantity}</span>
                       <StockStatusBadge status={product.stockStatus} />
                     </div>
                   </TableCell>

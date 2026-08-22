@@ -2,7 +2,11 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { createCustomerSchema, type CreateCustomerInput, type CustomerWithStatsDto } from '@textile-admin/shared';
+import {
+  createCustomerSchema,
+  type CreateCustomerInput,
+  type CustomerWithStatsDto,
+} from '@textile-admin/shared';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,10 +26,30 @@ import { ApiClientError } from '@/api/client';
 interface CustomerFormDialogProps {
   customer?: CustomerWithStatsDto;
   trigger?: React.ReactNode;
+  /** For controlled/inline use (e.g. "create customer" from within another
+   *  form) — when provided, no trigger is rendered and openness is driven
+   *  entirely by the parent. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Pre-fills the name field, e.g. with whatever the user already typed
+   *  into a search box before asking to create a new customer. */
+  defaultName?: string;
+  /** Called with the newly created customer — only fires on create, not edit. */
+  onCreated?: (customer: CustomerWithStatsDto) => void;
 }
 
-export function CustomerFormDialog({ customer, trigger }: CustomerFormDialogProps) {
-  const [open, setOpen] = React.useState(false);
+export function CustomerFormDialog({
+  customer,
+  trigger,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
+  defaultName,
+  onCreated,
+}: CustomerFormDialogProps) {
+  const isControlled = openProp !== undefined;
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const open = isControlled ? openProp : internalOpen;
+  const setOpen = onOpenChangeProp ?? setInternalOpen;
   const isEdit = Boolean(customer);
   const createMutation = useCreateCustomer();
   const updateMutation = useUpdateCustomer(customer?.id ?? '');
@@ -39,7 +63,7 @@ export function CustomerFormDialog({ customer, trigger }: CustomerFormDialogProp
   } = useForm<CreateCustomerInput>({
     resolver: zodResolver(createCustomerSchema),
     defaultValues: {
-      name: customer?.name ?? '',
+      name: customer?.name ?? defaultName ?? '',
       phone: customer?.phone ?? '',
       email: customer?.email ?? '',
       address: customer?.address ?? '',
@@ -50,15 +74,36 @@ export function CustomerFormDialog({ customer, trigger }: CustomerFormDialogProp
     },
   });
 
+  // Re-seed the form each time it opens for a fresh create — in controlled
+  // mode this component doesn't unmount between opens, so without this a
+  // second "create new customer" click would still show the previous
+  // attempt's leftover values (or a stale defaultName).
+  React.useEffect(() => {
+    if (open && !isEdit) {
+      reset({
+        name: defaultName ?? '',
+        phone: '',
+        email: '',
+        address: '',
+        city: '',
+        state: '',
+        pincode: '',
+        country: 'India',
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   async function onSubmit(values: CreateCustomerInput) {
     try {
       if (isEdit) {
         await updateMutation.mutateAsync(values);
         toast.success('Customer updated');
       } else {
-        await createMutation.mutateAsync(values);
+        const created = await createMutation.mutateAsync(values);
         toast.success('Customer created');
         reset();
+        onCreated?.(created);
       }
       setOpen(false);
     } catch (err) {
@@ -73,13 +118,15 @@ export function CustomerFormDialog({ customer, trigger }: CustomerFormDialogProp
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button>
-            <Plus className="h-4 w-4" /> Add Customer
-          </Button>
-        )}
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button>
+              <Plus className="h-4 w-4" /> Add Customer
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit Customer' : 'New Customer'}</DialogTitle>
