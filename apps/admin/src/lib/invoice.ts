@@ -1,7 +1,17 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { OrderDetailDto } from '@textile-admin/shared';
-import { formatCurrency, formatDate } from './utils';
+import { formatDate } from './utils';
+
+// jsPDF's built-in fonts (Helvetica etc.) only cover the old WinAnsi/Latin-1
+// character set, which doesn't include ₹ (U+20B9) — it renders as a garbled
+// fallback glyph instead. "Rs." is the safe substitute for the PDF only; the
+// on-screen UI keeps using the real ₹ symbol via formatCurrency in utils.ts.
+function formatCurrencyForPdf(amount: number): string {
+  const rounded = Math.round(amount);
+  const grouped = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Math.abs(rounded));
+  return `${rounded < 0 ? '-' : ''}Rs. ${grouped}`;
+}
 
 // There's no per-business settings screen yet, so these are the one place
 // to edit if the shop's name/tagline/GST status ever changes.
@@ -85,8 +95,8 @@ function buildInvoiceDoc(order: OrderDetailDto): jsPDF {
         item.productName,
         item.sku,
         String(item.quantity),
-        formatCurrency(item.unitPrice),
-        formatCurrency(item.total),
+        formatCurrencyForPdf(item.unitPrice),
+        formatCurrencyForPdf(item.total),
       ]),
       theme: 'grid',
       headStyles: { fillColor: [17, 24, 39], textColor: 255, fontStyle: 'bold' },
@@ -119,7 +129,7 @@ function buildInvoiceDoc(order: OrderDetailDto): jsPDF {
     doc.setFont('helvetica', emphasize ? 'bold' : 'normal');
     doc.setFontSize(emphasize ? 12 : 10);
     doc.text(label, totalsX, y);
-    doc.text(formatCurrency(amount), pageWidth - margin, y, { align: 'right' });
+    doc.text(formatCurrencyForPdf(amount), pageWidth - margin, y, { align: 'right' });
     y += emphasize ? 22 : 18;
   }
 
