@@ -22,6 +22,7 @@ import { useProducts } from '@/api/products';
 import { useCreateOrder } from '@/api/orders';
 import { formatCurrency } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { ProductCombobox } from './ProductCombobox';
 
 const NO_CUSTOMER = '__none__';
 
@@ -119,18 +120,11 @@ export function CreateOrderDialog() {
                   control={control}
                   name={`items.${index}.productId`}
                   render={({ field: productField }) => (
-                    <Select value={productField.value} onValueChange={productField.onChange}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select product" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {products?.items.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.sku} — {p.name} ({formatCurrency(p.sellingPrice)})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <ProductCombobox
+                      products={products?.items ?? []}
+                      value={productField.value}
+                      onChange={productField.onChange}
+                    />
                   )}
                 />
                 <Input

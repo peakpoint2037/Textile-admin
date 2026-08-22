@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useOrder, useUpdateOrderStatus, useUpdatePaymentStatus } from '@/api/orders';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { InvoiceActions } from './InvoiceActions';
 import { OrderTimeline } from './OrderTimeline';
 
 const PAYMENT_STATUSES: PaymentStatus[] = ['PENDING', 'PAID', 'FAILED', 'REFUNDED', 'COD'];
@@ -67,6 +68,7 @@ export function OrderDetailPage() {
         description={formatDateTime(order.orderDate)}
         actions={
           <>
+            <InvoiceActions orderId={order.id} order={order} />
             {allowedTransitions.map((status) => (
               <Button
                 key={status}

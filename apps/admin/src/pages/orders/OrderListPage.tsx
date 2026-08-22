@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useOrders } from '@/api/orders';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { CreateOrderDialog } from './CreateOrderDialog';
+import { InvoiceActions } from './InvoiceActions';
 
 const ALL = '__all__';
 
@@ -114,6 +115,7 @@ export function OrderListPage() {
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead>Payment</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -129,6 +131,9 @@ export function OrderListPage() {
                   </TableCell>
                   <TableCell>
                     <OrderStatusBadge status={order.orderStatus} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <InvoiceActions orderId={order.id} />
                   </TableCell>
                 </TableRow>
               ))}

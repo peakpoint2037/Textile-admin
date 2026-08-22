@@ -28,6 +28,12 @@ export function useOrder(id: string | undefined) {
   });
 }
 
+/** One-off fetch for places that need full order detail outside a
+ *  component's own render (e.g. a list row's Print/Download action). */
+export function fetchOrder(id: string): Promise<OrderDetailDto> {
+  return apiClient.get<OrderDetailDto>(`/orders/${id}`);
+}
+
 function useInvalidateOrders(id?: string) {
   const queryClient = useQueryClient();
   return () => {
