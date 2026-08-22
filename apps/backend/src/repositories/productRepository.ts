@@ -4,6 +4,7 @@ import { offsetFor } from '../utils/pagination.js';
 
 export interface ProductListRow extends ProductRow {
   category_name: string | null;
+  category_slug: string | null;
   primary_image_url: string | null;
   image_count: number;
 }
@@ -33,6 +34,7 @@ const LIST_SELECT = `
   SELECT
     p.*,
     c.name AS category_name,
+    c.slug AS category_slug,
     (
       SELECT pi.image_url FROM product_images pi
       WHERE pi.product_id = p.id AND pi.is_primary = TRUE

@@ -34,6 +34,19 @@ export const productQuerySchema = paginationQuerySchema.extend({
 });
 export type ProductQuery = z.infer<typeof productQuerySchema>;
 
+/** Filters for the public, unauthenticated storefront listing — a category
+ *  slug (not the internal UUID) rather than categoryId, and no status
+ *  filter since public listings only ever show ACTIVE products. */
+export const publicProductQuerySchema = paginationQuerySchema.extend({
+  search: z.string().trim().optional(),
+  category: z.string().trim().optional(),
+  size: z.string().trim().optional(),
+  color: z.string().trim().optional(),
+  sortBy: z.enum(['name', 'sellingPrice', 'createdAt']).default('createdAt'),
+  sortDir: z.enum(['asc', 'desc']).default('desc'),
+});
+export type PublicProductQuery = z.infer<typeof publicProductQuerySchema>;
+
 export const addProductImageSchema = z.object({
   storageKey: z.string().min(1),
   imageUrl: z.string().url(),

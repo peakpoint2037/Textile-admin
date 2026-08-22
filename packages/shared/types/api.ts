@@ -240,3 +240,22 @@ export interface ProductDetailDto extends ProductListItemDto {
   description: string | null;
   images: ProductImageDto[];
 }
+
+/** Storefront-safe product shape: no purchasePrice (cost/margin) and no
+ *  lowStockLimit (an internal operational threshold), unlike ProductListItemDto. */
+export interface PublicProductDto {
+  id: string;
+  sku: string;
+  name: string;
+  description: string | null;
+  categoryId: string | null;
+  categoryName: string | null;
+  categorySlug: string | null;
+  size: string | null;
+  color: string | null;
+  sellingPrice: number;
+  stockStatus: StockStatus;
+  inStock: boolean;
+  primaryImageUrl: string | null;
+  imageCount: number;
+}

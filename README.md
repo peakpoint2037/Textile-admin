@@ -122,6 +122,29 @@ Bearer $(...)"`) without a real Supabase project. There is no
 local dev, this token script) on the client side; the backend only ever
 verifies tokens it's handed.
 
+## Public storefront API
+
+`GET /api/public/products` is the one deliberately unauthenticated route in
+the API — meant to be called directly from a separate customer-facing
+storefront (a different app/domain than the admin dashboard).
+
+- Filters: `category` (a category **slug**, not the internal UUID — e.g.
+  `?category=t-shirts`), `search`, `size`, `color`, plus the usual
+  `page`/`limit`/`sortBy`/`sortDir`.
+- Always scoped to `status = 'ACTIVE'` products only; there's no way to ask
+  it for draft/archived products.
+- The response shape (`PublicProductDto`) deliberately omits `purchasePrice`
+  (your cost/margin) and `lowStockLimit` (an internal operational
+  threshold) — fields the admin-facing `/api/products` endpoint returns but
+  a public storefront must never expose. If you add fields to this
+  endpoint later, keep that exclusion in mind.
+- CORS for this one path allows any origin (the storefront's domain isn't
+  known in advance); every other route stays locked to `FRONTEND_URL`. See
+  the `origin` function in `apps/backend/src/app.ts` if you need to adjust
+  this.
+- An unknown category slug returns an empty page (`200`, zero items), not a
+  `404` — treated as a filter matching nothing, not a missing resource.
+
 ## Excel import/export formats
 
 **Products** (`/excel/products/import`, `/excel/products/export`) — header

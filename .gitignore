@@ -11,3 +11,4 @@ coverage/
 apps/admin/.vite/
 .vercel
 .env*
+.claude/
