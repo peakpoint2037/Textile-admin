@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { toast } from 'sonner';
+import imageCompression from 'browser-image-compression';
 import { GripVertical, ImagePlus, Star, Trash2, UploadCloud } from 'lucide-react';
 import type { ProductImageDto } from '@textile-admin/shared';
 import { Button } from '@/components/ui/button';
@@ -15,10 +16,32 @@ import { uploadToStorage } from '@/api/uploadToStorage';
 const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'] as const;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
+// Compresses toward ~600KB and 1920px on the longest edge, re-encoding to
+// WebP regardless of the source format — plenty for product photography,
+// a fraction of the size of a typical camera/phone original.
+const COMPRESSION_OPTIONS = {
+  maxSizeMB: 0.6,
+  maxWidthOrHeight: 1920,
+  useWebWorker: true,
+  fileType: 'image/webp',
+  initialQuality: 0.8,
+} as const;
+
+async function compressImage(file: File): Promise<File> {
+  try {
+    return await imageCompression(file, COMPRESSION_OPTIONS);
+  } catch (err) {
+    // Compression is a nice-to-have, not a requirement — fall back to the
+    // original file rather than blocking the upload over it.
+    console.error('Image compression failed, uploading the original file instead:', err);
+    return file;
+  }
+}
+
 interface UploadingFile {
   id: string;
   fileName: string;
-  progress: 'uploading' | 'saving' | 'error';
+  progress: 'compressing' | 'uploading' | 'saving' | 'error';
 }
 
 export function ProductImageManager({ productId, images }: { productId: string; images: ProductImageDto[] }) {
@@ -43,15 +66,20 @@ export function ProductImageManager({ productId, images }: { productId: string; 
       }
 
       const uploadId = crypto.randomUUID();
-      setUploading((prev) => [...prev, { id: uploadId, fileName: file.name, progress: 'uploading' }]);
+      setUploading((prev) => [...prev, { id: uploadId, fileName: file.name, progress: 'compressing' }]);
 
       try {
+        const compressed = await compressImage(file);
+        const contentType = (compressed.type || file.type) as (typeof ACCEPTED_TYPES)[number];
+
+        setUploading((prev) => prev.map((u) => (u.id === uploadId ? { ...u, progress: 'uploading' } : u)));
+
         const { uploadUrl, storageKey } = await requestUploadUrl.mutateAsync({
           fileName: file.name,
-          contentType: file.type as (typeof ACCEPTED_TYPES)[number],
-          fileSize: file.size,
+          contentType,
+          fileSize: compressed.size,
         });
-        await uploadToStorage(uploadUrl, file);
+        await uploadToStorage(uploadUrl, compressed);
 
         setUploading((prev) => prev.map((u) => (u.id === uploadId ? { ...u, progress: 'saving' } : u)));
 
@@ -145,6 +173,7 @@ export function ProductImageManager({ productId, images }: { productId: string; 
             <li key={u.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
               <span className="truncate">{u.fileName}</span>
               <span className="text-xs text-muted-foreground">
+                {u.progress === 'compressing' && 'Compressing…'}
                 {u.progress === 'uploading' && 'Uploading…'}
                 {u.progress === 'saving' && 'Saving…'}
                 {u.progress === 'error' && 'Failed'}
