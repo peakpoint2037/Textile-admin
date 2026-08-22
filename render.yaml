@@ -2,7 +2,7 @@ services:
   - type: web
     name: textile-admin-backend
     runtime: node
-    plan: starter
+    plan: free
     buildCommand: npm install && npm run build --workspace=packages/shared && npm run build --workspace=apps/backend
     startCommand: node apps/backend/dist/server.js
     healthCheckPath: /health
