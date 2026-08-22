@@ -10,6 +10,10 @@ config({ path: path.resolve(__dirname, '../../../../.env') });
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   FRONTEND_URL: z.string().url().default('http://localhost:5190'),
+  // Comma-separated list of origins allowed to call /api/public/* (the
+  // storefront-facing API). Left empty, that route allows any origin —
+  // set this once you know your storefront's real domain(s) to lock it down.
+  PUBLIC_STOREFRONT_URLS: z.string().optional().default(''),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   SUPABASE_JWT_SECRET: z.string().min(1, 'SUPABASE_JWT_SECRET is required'),
   SUPABASE_URL: z.string().optional().default(''),

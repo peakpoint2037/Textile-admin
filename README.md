@@ -82,7 +82,8 @@ as a fallback, the backend both read it. `apps/admin` needs its own `.env`
 |---|---|---|
 | `DATABASE_URL` | backend, database scripts | Postgres connection string. Local: the docker-compose Postgres (port `55432`, remapped from 5432 to avoid clashing with other local Postgres instances — adjust in `docker-compose.yml`/`.env` if it collides with something on your machine). Production: your Supabase connection string (Session mode for a long-running Node server, Transaction mode if you deploy the backend to Workers). |
 | `PORT` | backend | Port the API listens on. Default `3000`. |
-| `FRONTEND_URL` | backend | Allowed CORS origin. Local: `http://localhost:5190`. |
+| `FRONTEND_URL` | backend | Allowed CORS origin for the admin app. Local: `http://localhost:5190`. |
+| `PUBLIC_STOREFRONT_URLS` | backend | Comma-separated origins allowed to call the public storefront API (`GET /api/public/*`). Blank allows any origin. |
 | `SUPABASE_JWT_SECRET` | backend | Verifies the `Authorization: Bearer` JWT on every request. Local: any string (matched by `dev-token.ts`). Production: Supabase Dashboard → Project Settings → API → JWT Settings → JWT Secret. |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | backend | Only needed once a real Supabase project is connected; not required for local dev. Never expose the service-role key to the frontend. |
 | `R2_ENDPOINT` | backend | S3-compatible endpoint. Local: MinIO (`http://localhost:59000`). Production: your Cloudflare R2 S3 API endpoint (`https://<account-id>.r2.cloudflarestorage.com`). |
@@ -138,10 +139,11 @@ storefront (a different app/domain than the admin dashboard).
   threshold) — fields the admin-facing `/api/products` endpoint returns but
   a public storefront must never expose. If you add fields to this
   endpoint later, keep that exclusion in mind.
-- CORS for this one path allows any origin (the storefront's domain isn't
-  known in advance); every other route stays locked to `FRONTEND_URL`. See
-  the `origin` function in `apps/backend/src/app.ts` if you need to adjust
-  this.
+- CORS for this one path is controlled by `PUBLIC_STOREFRONT_URLS` (a
+  comma-separated allowlist) — left blank, any origin may call it; set once
+  the storefront's real domain(s) are known to lock it down. Every other
+  route stays locked to `FRONTEND_URL` regardless. See the `origin`
+  function in `apps/backend/src/app.ts` if you need finer-grained rules.
 - An unknown category slug returns an empty page (`200`, zero items), not a
   `404` — treated as a filter matching nothing, not a missing resource.
 

@@ -14,6 +14,8 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
+      - key: PUBLIC_STOREFRONT_URLS
+        value: https://dzane.in
       - key: SUPABASE_JWT_SECRET
         sync: false
       - key: SUPABASE_URL

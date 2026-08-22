@@ -16,16 +16,24 @@ import type { AppEnv } from './types/hono.js';
 
 export const app = new Hono<AppEnv>();
 
+const publicStorefrontOrigins = env.PUBLIC_STOREFRONT_URLS.split(',')
+  .map((url) => url.trim())
+  .filter(Boolean);
+
 app.use(
   '*',
   cors({
-    // /api/public/* is the storefront-facing surface and needs to be
-    // callable from whatever domain the storefront lives on, which we don't
-    // know in advance — every other route stays locked to the admin app's
-    // own origin. Echoing the request's origin back (rather than a literal
-    // "*") is what lets this coexist with credentialed admin requests using
-    // the same cors() call.
-    origin: (origin, c) => (c.req.path.startsWith('/api/public/') ? origin : env.FRONTEND_URL),
+    // /api/public/* is the storefront-facing surface. If PUBLIC_STOREFRONT_URLS
+    // is configured, only those origins may call it; left unset, any origin
+    // may (useful before the storefront's real domain is known). Every other
+    // route stays locked to the admin app's own origin regardless.
+    origin: (origin, c) => {
+      if (c.req.path.startsWith('/api/public/')) {
+        if (publicStorefrontOrigins.length === 0) return origin;
+        return origin && publicStorefrontOrigins.includes(origin) ? origin : null;
+      }
+      return env.FRONTEND_URL;
+    },
     allowHeaders: ['Content-Type', 'Authorization'],
     allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
   }),
