@@ -4,6 +4,7 @@ services:
     runtime: node
     plan: free
     buildCommand: npm install && npm run build --workspace=packages/shared && npm run build --workspace=apps/backend
+    preDeployCommand: npm run migrate --workspace=database
     startCommand: node apps/backend/dist/server.js
     healthCheckPath: /health
     envVars:
