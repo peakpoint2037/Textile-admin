@@ -1,4 +1,5 @@
 import type { ApiResponse } from '@textile-admin/shared';
+import { supabase } from '@/lib/supabase';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 const TOKEN_STORAGE_KEY = 'textile_admin_token';
@@ -39,6 +40,31 @@ interface RequestOptions {
   raw?: boolean;
 }
 
+// The background auth-state listener (see useAuth) normally keeps the stored
+// token fresh, but it relies on Supabase's own refresh timer, which doesn't
+// run while the tab is asleep/backgrounded. This is the fallback for that
+// gap: on a 401, try one explicit refresh before giving up on the session.
+// Concurrent 401s share one in-flight refresh instead of each racing Supabase.
+let refreshPromise: Promise<string | null> | null = null;
+
+function refreshAccessToken(): Promise<string | null> {
+  if (!supabase) return Promise.resolve(null);
+  if (!refreshPromise) {
+    refreshPromise = supabase.auth
+      .refreshSession()
+      .then(({ data, error }) => {
+        if (error || !data.session) return null;
+        setToken(data.session.access_token);
+        return data.session.access_token;
+      })
+      .catch(() => null)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
 function buildUrl(path: string, query?: RequestOptions['query']): string {
   const url = new URL(`${API_URL}${path}`);
   if (query) {
@@ -49,7 +75,7 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
   return url.toString();
 }
 
-async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+async function request<T>(path: string, opts: RequestOptions = {}, isRetry = false): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -76,6 +102,10 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   }
 
   if (res.status === 401) {
+    if (!isRetry) {
+      const refreshedToken = await refreshAccessToken();
+      if (refreshedToken) return request<T>(path, opts, true);
+    }
     unauthorizedHandler?.();
   }
 
@@ -103,6 +133,7 @@ export async function uploadFile(
   path: string,
   file: File,
   extraFields: Record<string, string> = {},
+  isRetry = false,
 ): Promise<unknown> {
   const formData = new FormData();
   formData.append('file', file);
@@ -113,7 +144,14 @@ export async function uploadFile(
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(buildUrl(path), { method: 'POST', headers, body: formData });
-  if (res.status === 401) unauthorizedHandler?.();
+
+  if (res.status === 401) {
+    if (!isRetry) {
+      const refreshedToken = await refreshAccessToken();
+      if (refreshedToken) return uploadFile(path, file, extraFields, true);
+    }
+    unauthorizedHandler?.();
+  }
 
   const json = (await res.json()) as ApiResponse<unknown>;
   if (!json.success) {

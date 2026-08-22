@@ -47,6 +47,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [queryClient]);
 
+  // Supabase's own client already renews the access token in the background
+  // using the refresh token (persisted in its own storage) — this just keeps
+  // the token our apiClient sends in sync with whatever Supabase currently
+  // considers valid, so a session survives well past the ~1hr access-token
+  // expiry without the user ever seeing a login screen.
+  React.useEffect(() => {
+    if (!supabase) return;
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        clearToken();
+        setHasToken(false);
+        queryClient.setQueryData(['auth', 'me'], null);
+        return;
+      }
+      if (session?.access_token) {
+        setToken(session.access_token);
+        setHasToken(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [queryClient]);
+
   const loginWithToken = React.useCallback(
     async (token: string) => {
       setToken(token);
