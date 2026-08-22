@@ -90,6 +90,7 @@ export interface OrderRow {
   discount: string;
   shipping_fee: string;
   tax: string;
+  stitching_charge: string;
   total: string;
   payment_status: PaymentStatus;
   order_status: OrderStatus;

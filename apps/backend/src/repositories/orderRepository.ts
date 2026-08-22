@@ -42,6 +42,7 @@ export const orderRepository = {
       discount: number;
       shippingFee: number;
       tax: number;
+      stitchingCharge: number;
       total: number;
       paymentStatus: PaymentStatus;
       notes: string | null;
@@ -49,8 +50,8 @@ export const orderRepository = {
   ): Promise<OrderRow> {
     const { rows } = await db.query<OrderRow>(
       `INSERT INTO orders
-        (order_number, customer_id, subtotal, discount, shipping_fee, tax, total, payment_status, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        (order_number, customer_id, subtotal, discount, shipping_fee, tax, stitching_charge, total, payment_status, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
       [
         input.orderNumber,
@@ -59,6 +60,7 @@ export const orderRepository = {
         input.discount,
         input.shippingFee,
         input.tax,
+        input.stitchingCharge,
         input.total,
         input.paymentStatus,
         input.notes,
@@ -183,6 +185,7 @@ export const orderRepository = {
       discount: number;
       shippingFee: number;
       tax: number;
+      stitchingCharge: number;
       total: number;
       notes: string | null;
     }>,
@@ -195,6 +198,7 @@ export const orderRepository = {
       ['discount', 'discount'],
       ['shippingFee', 'shipping_fee'],
       ['tax', 'tax'],
+      ['stitchingCharge', 'stitching_charge'],
       ['total', 'total'],
       ['notes', 'notes'],
     ] as const) {

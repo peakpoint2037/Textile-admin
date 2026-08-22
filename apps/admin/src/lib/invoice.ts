@@ -75,36 +75,43 @@ function buildInvoiceDoc(order: OrderDetailDto): jsPDF {
 
   y += 30;
 
-  autoTable(doc, {
-    startY: y,
-    margin: { left: margin, right: margin },
-    head: [['#', 'Item', 'SKU', 'Qty', 'Rate', 'Amount']],
-    body: order.items.map((item, index) => [
-      String(index + 1),
-      item.productName,
-      item.sku,
-      String(item.quantity),
-      formatCurrency(item.unitPrice),
-      formatCurrency(item.total),
-    ]),
-    theme: 'grid',
-    headStyles: { fillColor: [17, 24, 39], textColor: 255, fontStyle: 'bold' },
-    styles: { fontSize: 9, cellPadding: 6 },
-    columnStyles: {
-      0: { cellWidth: 24 },
-      3: { cellWidth: 40, halign: 'right' },
-      4: { cellWidth: 70, halign: 'right' },
-      5: { cellWidth: 70, halign: 'right' },
-    },
-  });
-
-  y = lastAutoTableFinalY(doc) + 24;
+  if (order.items.length > 0) {
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [['#', 'Item', 'SKU', 'Qty', 'Rate', 'Amount']],
+      body: order.items.map((item, index) => [
+        String(index + 1),
+        item.productName,
+        item.sku,
+        String(item.quantity),
+        formatCurrency(item.unitPrice),
+        formatCurrency(item.total),
+      ]),
+      theme: 'grid',
+      headStyles: { fillColor: [17, 24, 39], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 6 },
+      columnStyles: {
+        0: { cellWidth: 24 },
+        3: { cellWidth: 40, halign: 'right' },
+        4: { cellWidth: 70, halign: 'right' },
+        5: { cellWidth: 70, halign: 'right' },
+      },
+    });
+    y = lastAutoTableFinalY(doc) + 24;
+  } else {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(10);
+    doc.text('Stitching service only — no products (customer-supplied material).', margin, y);
+    y += 24;
+  }
 
   const totalsRows: Array<[string, number, boolean?]> = [
     ['Subtotal', order.subtotal],
     ['Discount', -order.discount],
     ['Shipping', order.shippingFee],
     ['Tax', order.tax],
+    ['Stitching Charge', order.stitchingCharge],
     ['Total', order.total, true],
   ];
   const totalsX = pageWidth - margin - 200;

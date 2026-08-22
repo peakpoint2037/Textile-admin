@@ -38,7 +38,7 @@ export function SalesReportPage() {
 
       {data && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <Card>
               <CardContent className="p-4">
                 <p className="text-xs text-muted-foreground">Revenue</p>
@@ -61,6 +61,12 @@ export function SalesReportPage() {
               <CardContent className="p-4">
                 <p className="text-xs text-muted-foreground">Avg Order Value</p>
                 <p className="text-xl font-semibold">{formatCurrency(data.averageOrderValue)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground">Stitching Revenue</p>
+                <p className="text-xl font-semibold">{formatCurrency(data.stitchingRevenue)}</p>
               </CardContent>
             </Card>
           </div>

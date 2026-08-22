@@ -246,6 +246,7 @@ export function mapOrderDetail(
     discount: Number(order.discount),
     shippingFee: Number(order.shipping_fee),
     tax: Number(order.tax),
+    stitchingCharge: Number(order.stitching_charge),
     notes: order.notes,
     customer: customer ? mapCustomer(customer) : null,
     items: items.map(mapOrderItem),

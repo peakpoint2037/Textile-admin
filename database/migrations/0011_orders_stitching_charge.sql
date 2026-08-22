@@ -1,0 +1,2 @@
+ALTER TABLE orders
+  ADD COLUMN stitching_charge DECIMAL(12, 2) NOT NULL DEFAULT 0;

@@ -60,6 +60,7 @@ export const reportService = {
       orders: summary.orders,
       unitsSold: summary.unitsSold,
       averageOrderValue: summary.orders > 0 ? summary.revenue / summary.orders : 0,
+      stitchingRevenue: summary.stitchingRevenue,
       salesByDay,
     };
   },

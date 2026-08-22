@@ -19,6 +19,7 @@ const order = {
   discount: 0,
   shippingFee: 0,
   tax: 0,
+  stitchingCharge: 0,
   notes: null,
   customer: null,
   items: [

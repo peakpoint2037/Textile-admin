@@ -16,6 +16,7 @@ export interface SalesSummary {
   revenue: number;
   orders: number;
   unitsSold: number;
+  stitchingRevenue: number;
 }
 
 export interface ProfitSummary {
@@ -46,10 +47,16 @@ export interface StatusCount {
 
 export const reportRepository = {
   async salesSummary(db: Queryable, range: DateRange): Promise<SalesSummary> {
-    const { rows } = await db.query<{ revenue: string; orders: string; units_sold: string }>(
+    const { rows } = await db.query<{
+      revenue: string;
+      orders: string;
+      units_sold: string;
+      stitching_revenue: string;
+    }>(
       `SELECT
          COALESCE((SELECT SUM(total) FROM orders WHERE ${ACTIVE_ORDER_STATUSES_SQL} AND ${DATE_RANGE_SQL}), 0) AS revenue,
          COALESCE((SELECT COUNT(*) FROM orders WHERE ${ACTIVE_ORDER_STATUSES_SQL} AND ${DATE_RANGE_SQL}), 0) AS orders,
+         COALESCE((SELECT SUM(stitching_charge) FROM orders WHERE ${ACTIVE_ORDER_STATUSES_SQL} AND ${DATE_RANGE_SQL}), 0) AS stitching_revenue,
          COALESCE((
            SELECT SUM(oi.quantity) FROM order_items oi
            JOIN orders o ON o.id = oi.order_id
@@ -64,6 +71,7 @@ export const reportRepository = {
       revenue: Number(row.revenue),
       orders: Number(row.orders),
       unitsSold: Number(row.units_sold),
+      stitchingRevenue: Number(row.stitching_revenue),
     };
   },
 

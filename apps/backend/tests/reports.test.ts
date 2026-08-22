@@ -52,3 +52,18 @@ describe('dashboard report', () => {
     expect(json.data.netProfit).toBe(2 * (799 - 300) - 100);
   });
 });
+
+describe('sales report', () => {
+  it('tracks stitching charge revenue separately from product revenue', async () => {
+    const order = await api.post('/api/orders', {
+      token,
+      body: { items: [{ productId, quantity: 2 }], stitchingCharge: 150 },
+    });
+    await api.patch(`/api/orders/${order.json.data.id}/status`, { token, body: { status: 'CONFIRMED' } });
+
+    const { json } = await api.get('/api/reports/sales', { token });
+
+    expect(json.data.revenue).toBe(2 * 799 + 150); // order total includes the stitching charge
+    expect(json.data.stitchingRevenue).toBe(150);
+  });
+});

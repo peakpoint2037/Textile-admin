@@ -150,7 +150,7 @@ export const orderService = {
         subtotal += total;
       }
 
-      const total = subtotal - input.discount + input.shippingFee + input.tax;
+      const total = subtotal - input.discount + input.shippingFee + input.tax + input.stitchingCharge;
       const orderNumber = await orderRepository.nextOrderNumber(client);
 
       const order = await orderRepository.create(client, {
@@ -160,6 +160,7 @@ export const orderService = {
         discount: input.discount,
         shippingFee: input.shippingFee,
         tax: input.tax,
+        stitchingCharge: input.stitchingCharge,
         total,
         paymentStatus: input.paymentStatus,
         notes: input.notes ?? null,
@@ -184,13 +185,15 @@ export const orderService = {
     const discount = input.discount ?? Number(order.discount);
     const shippingFee = input.shippingFee ?? Number(order.shipping_fee);
     const tax = input.tax ?? Number(order.tax);
-    const total = Number(order.subtotal) - discount + shippingFee + tax;
+    const stitchingCharge = input.stitchingCharge ?? Number(order.stitching_charge);
+    const total = Number(order.subtotal) - discount + shippingFee + tax + stitchingCharge;
 
     await orderRepository.updateFields(pool, id, {
       ...(input.customerId !== undefined ? { customerId: input.customerId } : {}),
       ...(input.discount !== undefined ? { discount: input.discount } : {}),
       ...(input.shippingFee !== undefined ? { shippingFee: input.shippingFee } : {}),
       ...(input.tax !== undefined ? { tax: input.tax } : {}),
+      ...(input.stitchingCharge !== undefined ? { stitchingCharge: input.stitchingCharge } : {}),
       ...(input.notes !== undefined ? { notes: input.notes ?? null } : {}),
       total,
     });

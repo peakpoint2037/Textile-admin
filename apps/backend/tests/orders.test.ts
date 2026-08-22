@@ -38,7 +38,41 @@ describe('order creation', () => {
     expect(json.data.items[0].unitPrice).toBe(799);
     expect(json.data.subtotal).toBe(2397); // 3 * 799
     expect(json.data.total).toBe(2447); // subtotal + shipping
+    expect(json.data.stitchingCharge).toBe(0);
     expect(json.data.orderStatus).toBe('PENDING');
+  });
+
+  it('adds an optional stitching charge to the total and reports it separately', async () => {
+    const { status, json } = await api.post('/api/orders', {
+      token,
+      body: {
+        items: [{ productId, quantity: 2 }],
+        stitchingCharge: 150,
+      },
+    });
+
+    expect(status).toBe(201);
+    expect(json.data.stitchingCharge).toBe(150);
+    expect(json.data.total).toBe(2 * 799 + 150);
+  });
+
+  it('allows a stitching-only order with no products, priced at the stitching charge', async () => {
+    const { status, json } = await api.post('/api/orders', {
+      token,
+      body: { items: [], stitchingCharge: 300 },
+    });
+
+    expect(status).toBe(201);
+    expect(json.data.items).toHaveLength(0);
+    expect(json.data.subtotal).toBe(0);
+    expect(json.data.total).toBe(300);
+  });
+
+  it('rejects an order with no products and no stitching charge', async () => {
+    const { status, json } = await api.post('/api/orders', { token, body: { items: [] } });
+
+    expect(status).toBe(422);
+    expect(json.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('does not touch stock until the order is confirmed', async () => {

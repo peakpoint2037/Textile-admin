@@ -39,7 +39,7 @@ export function CreateOrderDialog() {
     handleSubmit,
     watch,
     reset,
-    formState: { isSubmitting },
+    formState: { isSubmitting, errors },
   } = useForm<CreateOrderInput>({
     resolver: zodResolver(createOrderSchema),
     defaultValues: {
@@ -47,6 +47,7 @@ export function CreateOrderDialog() {
       discount: 0,
       shippingFee: 0,
       tax: 0,
+      stitchingCharge: 0,
       paymentStatus: 'PENDING',
     },
   });
@@ -55,6 +56,7 @@ export function CreateOrderDialog() {
   const watchedDiscount = watch('discount') ?? 0;
   const watchedShipping = watch('shippingFee') ?? 0;
   const watchedTax = watch('tax') ?? 0;
+  const watchedStitchingCharge = watch('stitchingCharge') ?? 0;
 
   const estimatedSubtotal = watchedItems.reduce((sum, item) => {
     const product = products?.items.find((p) => p.id === item.productId);
@@ -62,7 +64,8 @@ export function CreateOrderDialog() {
     const unitPrice = item.unitPrice ?? product.sellingPrice;
     return sum + unitPrice * item.quantity - (item.discount ?? 0);
   }, 0);
-  const estimatedTotal = estimatedSubtotal - watchedDiscount + watchedShipping + watchedTax;
+  const estimatedTotal =
+    estimatedSubtotal - watchedDiscount + watchedShipping + watchedTax + watchedStitchingCharge;
 
   async function onSubmit(values: CreateOrderInput) {
     try {
@@ -134,17 +137,17 @@ export function CreateOrderDialog() {
                   placeholder="Qty"
                   {...register(`items.${index}.quantity`)}
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  disabled={fields.length === 1}
-                  onClick={() => remove(index)}
-                >
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
             ))}
+            {fields.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                No products added — this will be a stitching-only order (customer supplies their own material).
+                Add a stitching charge below.
+              </p>
+            )}
             <Button
               type="button"
               variant="outline"
@@ -155,7 +158,7 @@ export function CreateOrderDialog() {
             </Button>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="space-y-1.5">
               <Label htmlFor="discount">Discount</Label>
               <Input id="discount" type="number" step="0.01" {...register('discount')} />
@@ -167,6 +170,13 @@ export function CreateOrderDialog() {
             <div className="space-y-1.5">
               <Label htmlFor="tax">Tax</Label>
               <Input id="tax" type="number" step="0.01" {...register('tax')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="stitchingCharge">Stitching charge</Label>
+              <Input id="stitchingCharge" type="number" step="0.01" {...register('stitchingCharge')} />
+              {errors.stitchingCharge && (
+                <p className="text-xs text-destructive">{errors.stitchingCharge.message}</p>
+              )}
             </div>
           </div>
 

@@ -95,31 +95,37 @@ export function OrderDetailPage() {
             <CardTitle>Products</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="text-right">Discount</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {order.items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <p className="font-medium">{item.productName}</p>
-                      <p className="text-xs text-muted-foreground">{item.sku}</p>
-                    </TableCell>
-                    <TableCell className="text-right">{item.quantity}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatCurrency(item.unitPrice)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatCurrency(item.discount)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatCurrency(item.total)}</TableCell>
+            {order.items.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Stitching-only order — no products (customer supplied their own material).
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                    <TableHead className="text-right">Discount</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {order.items.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        <p className="font-medium">{item.productName}</p>
+                        <p className="text-xs text-muted-foreground">{item.sku}</p>
+                      </TableCell>
+                      <TableCell className="text-right">{item.quantity}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatCurrency(item.unitPrice)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatCurrency(item.discount)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatCurrency(item.total)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
 
             <div className="ml-auto mt-4 w-full max-w-xs space-y-1 text-sm">
               <div className="flex justify-between">
@@ -138,6 +144,12 @@ export function OrderDetailPage() {
                 <span className="text-muted-foreground">Tax</span>
                 <span>{formatCurrency(order.tax)}</span>
               </div>
+              {order.stitchingCharge > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Stitching charge</span>
+                  <span>{formatCurrency(order.stitchingCharge)}</span>
+                </div>
+              )}
               <div className="flex justify-between border-t pt-1 font-medium">
                 <span>Total</span>
                 <span>{formatCurrency(order.total)}</span>

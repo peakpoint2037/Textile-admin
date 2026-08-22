@@ -150,6 +150,8 @@ export interface SalesReportDto {
   orders: number;
   unitsSold: number;
   averageOrderValue: number;
+  /** Revenue from stitching charges only, tracked separately from product revenue. */
+  stitchingRevenue: number;
   salesByDay: SalesByDayPointDto[];
 }
 
@@ -199,6 +201,7 @@ export interface OrderDetailDto extends OrderListItemDto {
   discount: number;
   shippingFee: number;
   tax: number;
+  stitchingCharge: number;
   notes: string | null;
   customer: CustomerDto | null;
   items: OrderItemDto[];
