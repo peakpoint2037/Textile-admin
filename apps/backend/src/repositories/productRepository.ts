@@ -7,6 +7,7 @@ export interface ProductListRow extends ProductRow {
   category_slug: string | null;
   primary_image_url: string | null;
   image_count: number;
+  group_name: string | null;
 }
 
 export interface ProductListFilters {
@@ -18,6 +19,7 @@ export interface ProductListFilters {
   size?: string;
   color?: string;
   stockStatus?: 'IN_STOCK' | 'LOW' | 'OUT_OF_STOCK';
+  groupId?: string;
   sortBy: 'name' | 'sku' | 'sellingPrice' | 'stockQuantity' | 'createdAt';
   sortDir: 'asc' | 'desc';
 }
@@ -35,6 +37,7 @@ const LIST_SELECT = `
     p.*,
     c.name AS category_name,
     c.slug AS category_slug,
+    pg.name AS group_name,
     (
       SELECT pi.image_url FROM product_images pi
       WHERE pi.product_id = p.id AND pi.is_primary = TRUE
@@ -45,6 +48,7 @@ const LIST_SELECT = `
     ) AS image_count
   FROM products p
   LEFT JOIN categories c ON c.id = p.category_id
+  LEFT JOIN product_groups pg ON pg.id = p.group_id
 `;
 
 export const productRepository = {
@@ -75,6 +79,10 @@ export const productRepository = {
     if (filters.color) {
       params.push(filters.color);
       conditions.push(`p.color = $${params.length}`);
+    }
+    if (filters.groupId) {
+      params.push(filters.groupId);
+      conditions.push(`p.group_id = $${params.length}`);
     }
     if (filters.stockStatus === 'OUT_OF_STOCK') {
       conditions.push(`p.stock_quantity = 0`);
@@ -129,13 +137,14 @@ export const productRepository = {
       stockQuantity: number;
       lowStockLimit: number;
       status: string;
+      groupId?: string | null;
     },
   ): Promise<ProductRow> {
     const { rows } = await db.query<ProductRow>(
       `INSERT INTO products
         (category_id, sku, name, description, size, color, purchase_price, selling_price,
-         stock_quantity, low_stock_limit, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         stock_quantity, low_stock_limit, status, group_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
       [
         input.categoryId,
@@ -149,6 +158,7 @@ export const productRepository = {
         input.stockQuantity,
         input.lowStockLimit,
         input.status,
+        input.groupId ?? null,
       ],
     );
     return rows[0]!;
@@ -202,6 +212,44 @@ export const productRepository = {
       params,
     );
     return rows[0] ?? null;
+  },
+
+  /** Cascades a product group's shared-field edit onto every one of its
+   *  variant rows — this is what keeps "one price for the whole group" true
+   *  after the group is edited. */
+  async updateByGroup(
+    db: Queryable,
+    groupId: string,
+    input: Partial<{
+      categoryId: string | null;
+      name: string;
+      description: string | null;
+      purchasePrice: number;
+      sellingPrice: number;
+      status: string;
+    }>,
+  ): Promise<void> {
+    const fields: string[] = [];
+    const params: unknown[] = [];
+
+    for (const [key, column] of [
+      ['categoryId', 'category_id'],
+      ['name', 'name'],
+      ['description', 'description'],
+      ['purchasePrice', 'purchase_price'],
+      ['sellingPrice', 'selling_price'],
+      ['status', 'status'],
+    ] as const) {
+      if (input[key] !== undefined) {
+        params.push(input[key]);
+        fields.push(`${column} = $${params.length}`);
+      }
+    }
+
+    if (fields.length === 0) return;
+
+    params.push(groupId);
+    await db.query(`UPDATE products SET ${fields.join(', ')} WHERE group_id = $${params.length}`, params);
   },
 
   /** Row-locks the product for an in-transaction stock mutation. Must be called inside withTransaction. */

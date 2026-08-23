@@ -8,6 +8,8 @@ import type {
   ExpenseRow,
   InventoryListItemDto,
   ProductDetailDto,
+  ProductGroupDetailDto,
+  ProductGroupDto,
   ProductImageDto,
   ProductImageRow,
   ProductListItemDto,
@@ -28,6 +30,7 @@ import type {
   OrderRow,
 } from '@textile-admin/shared';
 import type { ProductListRow } from '../repositories/productRepository.js';
+import type { ProductGroupListRow } from '../repositories/productGroupRepository.js';
 import type { MovementListRow } from '../repositories/inventoryMovementRepository.js';
 import type { OrderListRow } from '../repositories/orderRepository.js';
 import type { InventoryMovementDto } from '@textile-admin/shared';
@@ -131,6 +134,8 @@ export function mapProductListItem(row: ProductListRow): ProductListItemDto {
     stockStatus: stockStatusFor(row.stock_quantity, row.low_stock_limit),
     primaryImageUrl: row.primary_image_url,
     imageCount: row.image_count,
+    groupId: row.group_id,
+    groupName: row.group_name,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -141,6 +146,34 @@ export function mapProductDetail(row: ProductListRow, images: ProductImageRow[])
     ...mapProductListItem(row),
     description: row.description,
     images: images.map(mapProductImage),
+  };
+}
+
+export function mapProductGroup(row: ProductGroupListRow): ProductGroupDto {
+  return {
+    id: row.id,
+    name: row.name,
+    categoryId: row.category_id,
+    categoryName: row.category_name,
+    categorySlug: row.category_slug,
+    description: row.description,
+    purchasePrice: Number(row.purchase_price),
+    sellingPrice: Number(row.selling_price),
+    status: row.status,
+    variantCount: row.variant_count,
+    totalStock: row.total_stock,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function mapProductGroupDetail(
+  row: ProductGroupListRow,
+  variants: ProductListItemDto[],
+): ProductGroupDetailDto {
+  return {
+    ...mapProductGroup(row),
+    variants,
   };
 }
 
@@ -183,7 +216,9 @@ export function mapPublicProductDetail(
   };
 }
 
-export function mapInventoryListItem(row: ProductRow): InventoryListItemDto {
+export function mapInventoryListItem(
+  row: ProductRow & { group_name?: string | null },
+): InventoryListItemDto {
   return {
     id: row.id,
     sku: row.sku,
@@ -194,6 +229,8 @@ export function mapInventoryListItem(row: ProductRow): InventoryListItemDto {
     lowStockLimit: row.low_stock_limit,
     stockStatus: stockStatusFor(row.stock_quantity, row.low_stock_limit),
     status: row.status,
+    groupId: row.group_id,
+    groupName: row.group_name ?? null,
     updatedAt: row.updated_at,
   };
 }

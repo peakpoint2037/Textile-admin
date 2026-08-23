@@ -40,6 +40,19 @@ export interface ProductRow {
   stock_quantity: number;
   low_stock_limit: number;
   status: ProductStatus;
+  group_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductGroupRow {
+  id: string;
+  category_id: string | null;
+  name: string;
+  description: string | null;
+  purchase_price: string;
+  selling_price: string;
+  status: ProductStatus;
   created_at: string;
   updated_at: string;
 }

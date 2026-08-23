@@ -83,6 +83,8 @@ export interface InventoryListItemDto {
   lowStockLimit: number;
   stockStatus: StockStatus;
   status: ProductStatus;
+  groupId: string | null;
+  groupName: string | null;
   updatedAt: string;
 }
 
@@ -235,6 +237,10 @@ export interface ProductListItemDto {
   stockStatus: StockStatus;
   primaryImageUrl: string | null;
   imageCount: number;
+  /** Set when this product is a variant of a product group; null for a
+   *  standalone product (every product created before variants existed). */
+  groupId: string | null;
+  groupName: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -242,6 +248,26 @@ export interface ProductListItemDto {
 export interface ProductDetailDto extends ProductListItemDto {
   description: string | null;
   images: ProductImageDto[];
+}
+
+export interface ProductGroupDto {
+  id: string;
+  name: string;
+  categoryId: string | null;
+  categoryName: string | null;
+  categorySlug: string | null;
+  description: string | null;
+  purchasePrice: number;
+  sellingPrice: number;
+  status: ProductStatus;
+  variantCount: number;
+  totalStock: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductGroupDetailDto extends ProductGroupDto {
+  variants: ProductListItemDto[];
 }
 
 /** Storefront-safe product shape: no purchasePrice (cost/margin) and no

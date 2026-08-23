@@ -9,6 +9,8 @@ interface ProductOption {
   sku: string;
   name: string;
   sellingPrice: number;
+  size?: string | null;
+  color?: string | null;
 }
 
 interface ProductComboboxProps {
@@ -16,6 +18,12 @@ interface ProductComboboxProps {
   value: string;
   onChange: (id: string) => void;
   placeholder?: string;
+}
+
+/** e.g. "(32, Black)" — distinguishes variants of the same product name; empty for a plain product. */
+function variantSuffix(p: ProductOption): string {
+  const parts = [p.size, p.color].filter(Boolean);
+  return parts.length > 0 ? ` (${parts.join(', ')})` : '';
 }
 
 export function ProductCombobox({ products, value, onChange, placeholder = 'Select product' }: ProductComboboxProps) {
@@ -46,7 +54,9 @@ export function ProductCombobox({ products, value, onChange, placeholder = 'Sele
           className="flex-1 justify-between font-normal"
         >
           <span className="truncate">
-            {selected ? `${selected.sku} — ${selected.name} (${formatCurrency(selected.sellingPrice)})` : placeholder}
+            {selected
+              ? `${selected.sku} — ${selected.name}${variantSuffix(selected)} (${formatCurrency(selected.sellingPrice)})`
+              : placeholder}
           </span>
           <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -82,6 +92,7 @@ export function ProductCombobox({ products, value, onChange, placeholder = 'Sele
             >
               <span className="truncate">
                 <span className="font-medium">{p.sku}</span> — {p.name}
+                {variantSuffix(p)}
               </span>
               <span className="ml-2 shrink-0 text-muted-foreground">{formatCurrency(p.sellingPrice)}</span>
             </button>

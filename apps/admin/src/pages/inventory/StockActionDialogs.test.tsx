@@ -22,6 +22,8 @@ const product = {
   lowStockLimit: 5,
   stockStatus: 'IN_STOCK' as const,
   status: 'ACTIVE' as const,
+  groupId: null,
+  groupName: null,
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 

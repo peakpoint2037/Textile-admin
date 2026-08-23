@@ -5,6 +5,8 @@ import type {
   ProductQuery,
   UpdateProductInput,
 } from '@textile-admin/shared';
+import type { PoolClient } from 'pg';
+import type { ProductRow } from '@textile-admin/shared';
 import { paginatedResult, type PaginatedResult } from './helpers/paginatedResult.js';
 import { pool, withTransaction } from '../config/db.js';
 import { categoryRepository } from '../repositories/categoryRepository.js';
@@ -20,17 +22,56 @@ async function findRowOrThrow(id: string) {
   return row;
 }
 
-async function assertSkuAvailable(sku: string, excludeId?: string) {
+export async function assertSkuAvailable(sku: string, excludeId?: string) {
   const existing = await productRepository.findBySku(pool, sku);
   if (existing && existing.id !== excludeId) {
     throw ApiError.conflict('PRODUCT_SKU_EXISTS', 'A product with this SKU already exists');
   }
 }
 
-async function assertCategoryExists(categoryId: string | null | undefined) {
+export async function assertCategoryExists(categoryId: string | null | undefined) {
   if (!categoryId) return;
   const category = await categoryRepository.findById(pool, categoryId);
   if (!category) throw ApiError.notFound('Category', 'CATEGORY_NOT_FOUND');
+}
+
+export interface CreateProductRowInput {
+  categoryId: string | null;
+  sku: string;
+  name: string;
+  description: string | null;
+  size: string | null;
+  color: string | null;
+  purchasePrice: number;
+  sellingPrice: number;
+  stockQuantity: number;
+  lowStockLimit: number;
+  status: string;
+  groupId?: string | null;
+}
+
+/** Inserts one product row + its OPENING_STOCK movement (if any) inside an
+ *  existing transaction. Shared by single-product creation and product-group
+ *  variant creation so both paths behave identically. Caller is responsible
+ *  for SKU/category validation before calling this. */
+export async function createProductRow(
+  client: PoolClient,
+  input: CreateProductRowInput,
+  userId: string,
+): Promise<ProductRow> {
+  const product = await productRepository.create(client, input);
+
+  if (input.stockQuantity > 0) {
+    await inventoryMovementRepository.create(client, {
+      productId: product.id,
+      type: 'OPENING_STOCK',
+      quantity: input.stockQuantity,
+      reason: 'Initial stock on product creation',
+      createdBy: userId,
+    });
+  }
+
+  return product;
 }
 
 export const productService = {
@@ -49,33 +90,25 @@ export const productService = {
     await assertSkuAvailable(input.sku);
     await assertCategoryExists(input.categoryId);
 
-    const created = await withTransaction(async (client) => {
-      const product = await productRepository.create(client, {
-        categoryId: input.categoryId ?? null,
-        sku: input.sku,
-        name: input.name,
-        description: input.description ?? null,
-        size: input.size ?? null,
-        color: input.color ?? null,
-        purchasePrice: input.purchasePrice,
-        sellingPrice: input.sellingPrice,
-        stockQuantity: input.stockQuantity,
-        lowStockLimit: input.lowStockLimit,
-        status: input.status,
-      });
-
-      if (input.stockQuantity > 0) {
-        await inventoryMovementRepository.create(client, {
-          productId: product.id,
-          type: 'OPENING_STOCK',
-          quantity: input.stockQuantity,
-          reason: 'Initial stock on product creation',
-          createdBy: userId,
-        });
-      }
-
-      return product;
-    });
+    const created = await withTransaction((client) =>
+      createProductRow(
+        client,
+        {
+          categoryId: input.categoryId ?? null,
+          sku: input.sku,
+          name: input.name,
+          description: input.description ?? null,
+          size: input.size ?? null,
+          color: input.color ?? null,
+          purchasePrice: input.purchasePrice,
+          sellingPrice: input.sellingPrice,
+          stockQuantity: input.stockQuantity,
+          lowStockLimit: input.lowStockLimit,
+          status: input.status,
+        },
+        userId,
+      ),
+    );
 
     return this.getById(created.id);
   },

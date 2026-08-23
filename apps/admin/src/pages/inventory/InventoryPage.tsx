@@ -98,6 +98,7 @@ export function InventoryPage() {
               <TableRow>
                 <TableHead>SKU</TableHead>
                 <TableHead>Product</TableHead>
+                <TableHead>Group</TableHead>
                 <TableHead>Size</TableHead>
                 <TableHead>Color</TableHead>
                 <TableHead className="text-right">Current Stock</TableHead>
@@ -112,6 +113,15 @@ export function InventoryPage() {
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.sku}</TableCell>
                   <TableCell>{item.name}</TableCell>
+                  <TableCell>
+                    {item.groupId ? (
+                      <Link to={`/products/groups/${item.groupId}`} className="text-primary hover:underline">
+                        {item.groupName}
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
                   <TableCell>{item.size ?? '—'}</TableCell>
                   <TableCell>{item.color ?? '—'}</TableCell>
                   <TableCell className="text-right tabular-nums">{item.stockQuantity}</TableCell>

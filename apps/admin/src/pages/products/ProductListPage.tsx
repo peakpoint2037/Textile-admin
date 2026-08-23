@@ -173,6 +173,7 @@ export function ProductListPage() {
                 <TableHead>Product</TableHead>
                 <TableHead>SKU</TableHead>
                 <TableHead>Category</TableHead>
+                <TableHead>Group</TableHead>
                 <TableHead>Size</TableHead>
                 <TableHead>Color</TableHead>
                 <TableHead className="text-right">Purchase</TableHead>
@@ -201,6 +202,15 @@ export function ProductListPage() {
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell className="text-muted-foreground">{product.sku}</TableCell>
                   <TableCell className="text-muted-foreground">{product.categoryName ?? '—'}</TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    {product.groupId ? (
+                      <Link to={`/products/groups/${product.groupId}`} className="text-primary hover:underline">
+                        {product.groupName}
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
                   <TableCell>{product.size ?? '—'}</TableCell>
                   <TableCell>{product.color ?? '—'}</TableCell>
                   <TableCell className="text-right tabular-nums">{formatCurrency(product.purchasePrice)}</TableCell>

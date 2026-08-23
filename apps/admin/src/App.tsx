@@ -6,6 +6,7 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { ProductListPage } from '@/pages/products/ProductListPage';
 import { ProductFormPage } from '@/pages/products/ProductFormPage';
 import { ProductDetailPage } from '@/pages/products/ProductDetailPage';
+import { ProductGroupDetailPage } from '@/pages/products/ProductGroupDetailPage';
 import { CategoriesPage } from '@/pages/CategoriesPage';
 import { InventoryPage } from '@/pages/inventory/InventoryPage';
 import { StockHistoryPage } from '@/pages/inventory/StockHistoryPage';
@@ -34,6 +35,7 @@ export function App() {
 
           <Route path="/products" element={<ProductListPage />} />
           <Route path="/products/new" element={<ProductFormPage />} />
+          <Route path="/products/groups/:id" element={<ProductGroupDetailPage />} />
           <Route path="/products/:id" element={<ProductDetailPage />} />
           <Route path="/products/:id/edit" element={<ProductFormPage />} />
 

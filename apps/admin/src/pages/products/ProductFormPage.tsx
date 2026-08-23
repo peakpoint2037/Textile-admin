@@ -18,17 +18,31 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useCategories } from '@/api/categories';
 import { useCreateProduct, useProduct, useUpdateProduct } from '@/api/products';
 import { ApiClientError } from '@/api/client';
 import { ProductImageManager } from './ProductImageManager';
+import { ProductGroupCreateForm } from './ProductGroupCreateForm';
 
 const NO_CATEGORY = '__none__';
+
+function VariantToggle({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <div className="mb-4 flex items-center gap-2">
+      <Checkbox id="hasVariants" checked={checked} onCheckedChange={(c) => onChange(c === true)} />
+      <Label htmlFor="hasVariants" className="font-normal text-muted-foreground">
+        This product has multiple sizes/colors
+      </Label>
+    </div>
+  );
+}
 
 export function ProductFormPage() {
   const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
   const navigate = useNavigate();
+  const [hasVariants, setHasVariants] = React.useState(false);
 
   const { data: categories } = useCategories();
   const { data: product, isPending: productPending, isError, error, refetch } = useProduct(id);
@@ -104,9 +118,20 @@ export function ProductFormPage() {
     return <ErrorState message={(error as Error).message} onRetry={() => refetch()} />;
   }
 
+  if (!isEdit && hasVariants) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <PageHeader title="Add Product" />
+        <VariantToggle checked={hasVariants} onChange={setHasVariants} />
+        <ProductGroupCreateForm />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader title={isEdit ? 'Edit Product' : 'Add Product'} />
+      {!isEdit && <VariantToggle checked={hasVariants} onChange={setHasVariants} />}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <Card>

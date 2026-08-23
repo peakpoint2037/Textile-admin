@@ -4,6 +4,11 @@ export type UserRole = (typeof USER_ROLES)[number];
 export const PRODUCT_STATUSES = ['ACTIVE', 'INACTIVE', 'ARCHIVED'] as const;
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
 
+/** Quick-pick suggestions for a variant's size field — `size` itself stays
+ *  free text (nullable), so "Free Size" is just an ordinary value like any
+ *  other, not a special case, and any custom size can still be typed. */
+export const SIZE_PRESETS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'] as const;
+
 export const MOVEMENT_TYPES = [
   'OPENING_STOCK',
   'STOCK_IN',
