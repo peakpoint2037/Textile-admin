@@ -13,6 +13,56 @@ packages/shared Zod schemas, TS types, and enums shared by both apps
 database        SQL migrations, seed data, and dev-auth helper scripts
 ```
 
+## Features
+
+- **Catalog** — standalone products, or **product groups** (a shared name,
+  category, description, price, and status) with per-**variant** SKU/size/
+  color/stock — see [Products vs. product groups](#products-vs-product-groups)
+  below. Multiple images per product (drag-to-reorder, one marked primary),
+  uploaded client-side straight to S3-compatible storage via a presigned URL.
+- **Inventory** — every stock change (manual stock-in, adjustment, sale,
+  cancellation, return, opening stock, Excel reconciliation) is a single
+  transactional `inventory_movements` row; `products.stock_quantity` is never
+  written outside that path, so the ledger and the live count can never drift.
+  Low-stock/out-of-stock views and a full movement history.
+- **Orders** — line items priced against a product's current selling price
+  (overridable per line), per-line discounts, order-level discount/shipping/
+  tax, and an optional **stitching charge** (including stitching-only orders
+  with zero products). A backend-enforced status state machine drives stock
+  deduction/restoration automatically — see
+  [Order lifecycle](#order-lifecycle--stock-rules). Payment status tracked
+  separately from fulfillment status. PDF invoice generation in the browser.
+- **Customers** — searchable directory with per-customer order stats; inline
+  create from the New Order screen; deletion blocked while a customer has
+  order history.
+- **Expenses** — categorized business expenses (packaging, marketing,
+  shipping, printing, photography, website, other), rolled into the profit
+  report.
+- **Reports & dashboard** — sales, gross/net profit (revenue minus product
+  cost minus expenses), inventory valuation, top products, sales-by-day,
+  and order/payment status distributions, all filterable by date range.
+- **Excel import/export** — bulk product create/update and stock-in via
+  `.xlsx`, with a mandatory preview-then-confirm step and an all-or-nothing
+  commit (see [Excel import/export formats](#excel-importexport-formats)).
+- **Public storefront API** — two deliberately unauthenticated, read-only
+  endpoints for a separate customer-facing site to list/view `ACTIVE`
+  products, with cost/margin fields stripped out (see
+  [Public storefront API](#public-storefront-api)).
+- **Auth & roles** — Supabase-Auth-backed JWT sessions with three roles
+  (`OWNER`, `ADMIN`, `STAFF`) and per-route permission checks (see
+  [Roles & permissions](#roles--permissions)); a developer-token flow stands
+  in before a real Supabase project is connected.
+
+## Tech stack
+
+| Layer | Choices |
+|---|---|
+| Backend | [Hono](https://hono.dev) on Node (`@hono/node-server`), `pg`, `zod`, `jose` (JWT verification), `exceljs`, `@aws-sdk/client-s3` (S3/R2), Vitest |
+| Frontend | React 18 + Vite, TanStack Query, React Hook Form + Zod resolvers, React Router, Tailwind CSS + Radix UI (hand-rolled shadcn-style components), Recharts, `jspdf`/`jspdf-autotable` (invoice PDFs), Sonner (toasts), Vitest + React Testing Library |
+| Database | Postgres — plain numbered SQL migrations, no ORM |
+| Storage | S3-compatible object storage (MinIO locally, Cloudflare R2 in production) via presigned URLs |
+| Auth | Supabase Auth (JWT), verified locally against a shared dev secret before a real Supabase project exists |
+
 ## Quick start (local development)
 
 Requires Node.js 20+, Docker, and npm.
@@ -71,6 +121,80 @@ database/
                 schema_migrations so re-running `npm run migrate` is a no-op
   seeds/        seed.ts (demo data) and dev-token.ts (local auth helper)
 ```
+
+## Domain model & business rules
+
+### Products vs. product groups
+
+A `product` row is always the sellable, stock-tracked unit — it's what
+appears on an order line and what `inventory_movements` references. Most
+fields (`name`, `category`, `description`, `purchase_price`, `selling_price`,
+`status`) can either belong to a single standalone product, or be owned by a
+**product group** and shared across every variant in it:
+
+- Creating a group takes the shared fields once plus a list of variants, each
+  contributing only what's genuinely per-variant: `sku`, `size`, `color`,
+  `stockQuantity`, `lowStockLimit`.
+- Editing a group's shared fields (e.g. `sellingPrice`) cascades onto every
+  variant's `products` row in the same transaction — there's no way for two
+  variants of one group to disagree on price.
+- A variant can be added to an existing group later (`addVariant`); a group
+  can't be deleted while it still has variants (`PRODUCT_GROUP_IN_USE`).
+- A product with `group_id = NULL` is a plain standalone product — grouping
+  was added as a purely additive migration (`0012_product_groups.sql`), so
+  every product created before it, or created without a group since,
+  behaves exactly as before.
+
+### Order lifecycle & stock rules
+
+Orders move through a fixed status state machine
+(`ORDER_STATUS_TRANSITIONS` in `packages/shared/constants/enums.ts`),
+enforced server-side — the API rejects any transition not listed:
+
+```
+PENDING → CONFIRMED → PACKED → SHIPPED → DELIVERED
+   ↓           ↓          ↓        ↓          ↓
+CANCELLED  CANCELLED  CANCELLED CANCELLED  RETURNED
+                                    ↓
+                                RETURNED
+```
+
+- Stock is deducted exactly once, on the `PENDING → CONFIRMED` transition —
+  every line's stock is locked (in a stable order to avoid deadlocking
+  against other concurrent confirmations) and checked before any of it is
+  deducted, so one short-stocked line fails the whole confirmation.
+- Cancelling an order only restores stock if it had already been deducted
+  (i.e. it was at or past `CONFIRMED`) — cancelling a still-`PENDING` order
+  restores nothing, since nothing was taken.
+- Returning a `SHIPPED`/`DELIVERED` order always restores stock.
+- Payment status (`PENDING`/`PAID`/`FAILED`/`REFUNDED`/`COD`) is tracked
+  independently of fulfillment status and changed via a separate,
+  `OWNER`/`ADMIN`-only endpoint.
+- The backend always computes `total` server-side
+  (`subtotal - discount + shippingFee + tax + stitchingCharge`) — the
+  frontend's total is an estimate shown before submit, never trusted.
+
+### Roles & permissions
+
+Three roles, enforced per-route by `requireRole` middleware (not just hidden
+in the UI):
+
+| Action | OWNER / ADMIN | STAFF |
+|---|---|---|
+| View products, orders, customers, reports | ✅ | ✅ |
+| Create/update orders, order status | ✅ | ✅ |
+| Stock-in / stock adjustment, product image uploads | ✅ | ✅ |
+| Stock Excel import | ✅ | ✅ |
+| Create/update/delete products, product groups, categories | ✅ | ❌ |
+| Update order **payment** status | ✅ | ❌ |
+| Create/update/delete expenses | ✅ | ❌ |
+| Delete a customer | ✅ | ❌ |
+| Product Excel import | ✅ | ❌ |
+
+A brand-new Supabase Auth user is provisioned automatically on first
+authenticated request, defaulting to the least-privileged `STAFF` role —
+promoting someone to `ADMIN`/`OWNER` is a manual SQL update (see
+[Going to production](#going-to-production)).
 
 ## Environment variables
 
@@ -190,6 +314,12 @@ npm run test --workspace=apps/admin     # Vitest + React Testing Library
 
 ## Going to production
 
+The repo ships ready-to-use deploy configs for one concrete pairing — Render
+for the backend (`render.yaml`, including a `preDeployCommand` that runs
+migrations automatically) and Vercel for the admin frontend (`vercel.json`)
+— but nothing about the backend or frontend is Render/Vercel-specific; see
+[Backend deployment](#backend-deployment) for other hosts.
+
 ### Supabase (database + auth)
 
 1. Create a project at supabase.com.
@@ -281,3 +411,6 @@ interface in `config/db.ts`, and add a `wrangler.toml`. Nothing in
   as JS numbers, not Postgres decimal strings); the shared Zod schemas in
   `packages/shared` are the single source of truth both apps validate
   against.
+- A product group's shared fields (name, category, description, price,
+  status) are edited once and cascaded onto every variant in the same
+  transaction — there's no path that lets variants of one group disagree.
