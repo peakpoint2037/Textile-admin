@@ -8,7 +8,15 @@ import { env } from './env.js';
 // Postgres sends instead.
 types.setTypeParser(1082, (val: string) => val);
 
-export const pool = new Pool({ connectionString: env.DATABASE_URL });
+// A smaller max + a bounded connect timeout keep a post-spin-down burst of
+// requests from opening 10 simultaneous new sessions against Supabase's
+// pooler at once — the exact pattern that exhausted its session-mode pool
+// and produced ECHECKOUTTIMEOUT errors on this free-tier Render instance.
+export const pool = new Pool({
+  connectionString: env.DATABASE_URL,
+  max: 5,
+  connectionTimeoutMillis: 10_000,
+});
 
 // Without this listener, an idle client dropped by the server (e.g. a
 // connection pooler like Supabase's Supavisor recycling it) throws an
