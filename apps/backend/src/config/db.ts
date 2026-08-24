@@ -10,6 +10,14 @@ types.setTypeParser(1082, (val: string) => val);
 
 export const pool = new Pool({ connectionString: env.DATABASE_URL });
 
+// Without this listener, an idle client dropped by the server (e.g. a
+// connection pooler like Supabase's Supavisor recycling it) throws an
+// unhandled 'error' on the pool's EventEmitter and crashes the process —
+// turning a single dead connection into a full server restart.
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle pg client', err);
+});
+
 /** Anything that can run a parameterized query: the pool itself, or a client inside a transaction. */
 export type Queryable = Pool | PoolClient;
 
